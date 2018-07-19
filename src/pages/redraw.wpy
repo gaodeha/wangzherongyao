@@ -1,0 +1,227 @@
+<style lang="scss">
+
+  .container {
+    background-color: #F1F0F5;
+    width: 100%;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .redraw-list {
+    position: fixed;
+    top: 40rpx;
+    right: 40rpx;
+    line-height: 48rpx;
+    font-size: 24rpx;
+    padding: 2rpx 24rpx;
+    color: #999999;
+    border-radius: 40rpx;
+    border: 1px solid #999999;
+  }
+
+  .remain-block {
+    margin-top: 120rpx;
+    .remain-tips {
+        font-size: 24rpx;
+        color: #999999;
+        margin-bottom: 40rpx;
+    }
+    .remain-money {
+      color: #000000;
+      font-size: 64rpx;
+      .money-type {
+        margin-right: 6rpx;
+      }
+    }
+  }
+
+  .money-input {
+    background-color: #FFFFFF;
+    height: 100rpx;
+    margin-top: 20rpx;
+    font-size: 32rpx;
+    width: 100%;
+
+    input {
+
+    }
+    .money-type {
+      font-size: 64rpx;
+      color: #000000;
+      margin-right: 10rpx;
+      margin-left: 20rpx;
+    }
+    .redraw-all {
+      color: #446587;
+      margin-right: 20rpx;
+    }
+  }
+
+  .btn-group {
+    width: 80%;
+    margin-top: 30rpx;
+
+    .btn {
+      width: 100%;
+      height: 88rpx;
+      font-size: 32rpx;
+      border-radius: 10rpx;
+    }
+
+    .redraw-btn {
+      background-color: #56B837;
+      color: #FFFFFF;
+    }
+
+    .goon-btn {
+      margin-top: 24rpx;
+      background-color: #F0F1F3;
+      color: #666666;
+      border: 1px solid #cccccc;
+    }
+
+  }
+
+  .redraw-notices {
+    width: 80%;
+    margin-top: 40rpx;
+    font-size: 24rpx;
+    color: #666666;
+    line-height: 36rpx;
+    text-align: left;
+    .notice {
+      width: 100%;
+      text-align: left;
+    }
+  }
+
+
+</style>
+<template>
+  <view class="container flex flex-column">
+      <view class="redraw-list flex align-center justify-center" @tap="navigateToRedrawList">
+          提现记录
+      </view>
+
+      <view class="remain-block flex flex-column justify-center align-center">
+          <view class="remain-tips">可提现金额</view>
+          <view class="remain-money"><text class="money-type">¥</text><text>{{rewardStat.redpocketRemain}}</text></view>
+      </view>
+
+      <view class="money-input flex justify-center align-center">
+          <text class="money-type">¥</text>
+          <input class="flex-grow" maxlength="6" type="digit" placeholder="请输入要提现的金额" placeholder-style="color: #ccc; font-size: 28rpx;" value="{{redrawAmount}}" bindchange="bindChange" />
+          <view class="redraw-all flex-noshrink" @tap="redrawAll">全部提现</view>
+      </view>
+
+      <view class="btn-group flex flex-column">
+          <view class="btn redraw-btn flex align-center justify-center" @tap="redraw">提现</view>
+          <view class="btn goon-btn flex align-center justify-center" @tap="switchToIndex">继续游戏</view>
+      </view>
+
+      <view class="redraw-notices flex flex-column align-center justify-center">
+          <text class="notice">温馨提示：</text>
+          <text class="notice">1. 搜索并关注公众号"{{gzh}}", 发送订单号提现</text>
+          <text class="notice">2. 如果忘记提现单号， 可从提现记录里查看</text>
+          <text class="notice">3. 提现金额将在公众号里发放，请务必关注方可提现</text>
+          <text class="notice">4. 提现单号是唯一提现凭证, 请妥善保管</text>
+      </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import Config from '@/utils/config'
+  import constants from '@/utils/constants'
+
+
+  export default class RedrawPage extends wepy.page {
+    config = {
+      navigationBarTitleText: "余额提现",
+      backgroundColor: "#EDECF3",
+    }
+    data = {
+      userInfo: null,
+      rewardStat: {
+        chanceRemain: 0,
+        passedTotal: 0,
+        redpocketRemain: 0.00,
+        redpocketTotal: 0.00
+      },
+      redrawAmount: "",
+      gzh: "靠谱寻"
+    }
+
+    computed = {
+    }
+
+    methods = {
+      switchToIndex() {
+        wx.switchTab({
+          url: '/pages/index'
+        })
+      },
+      navigateToRedrawList() {
+        wx.navigateTo({
+          url: '/pages/redrawlist'
+        })
+      },
+      redrawAll() {
+        this.redrawAmount = this.rewardStat.redpocketRemain;
+      },
+      redraw() {
+        const minRedraw = parseInt(Config.getWithDefault(constants.CONF_REDRAW_MIN, constants.CONF_REDRAW_MIN_DEFAULT));
+        if (this.redrawAmount > this.rewardStat.redpocketRemain) {
+          wx.showModal({
+              title: "提现提示",
+              content: "提现余额不足",
+              showCancel: false
+          });
+          return;
+        }
+        if (this.redrawAmount < minRedraw) {
+          wx.showModal({
+            title: "提现提示",
+            content: "提现金额最低限额" + minRedraw + "元",
+            showCancel: false
+          });
+          return;
+        }
+        api.redraw(this.redrawAmount).then(() => {
+            //this.navigateToRedrawList();
+            wx.navigateTo({
+              url: '/pages/redrawlist'
+            })
+        });
+      },
+      bindChange(e) {
+        this.redrawAmount = e.detail.value
+      }
+    }
+
+    onShow() {
+      this.$parent.login().then((userInfo) => {
+          this.userInfo = userInfo;
+      }).catch(err => {
+          console.log("login error：", err)}
+      );
+      const that = this;
+      api.getRewards().then((data) =>{
+        console.log("getReward:", data);
+        that.rewardStat = data.stat;
+        that.$apply();
+      }).catch((e) => {console.error("getReward error:", e)});
+
+      this.refreshConfigs();
+    }
+
+    onShareAppMessage() {
+      return this.$parent.getShareInfo();
+    }
+
+    refreshConfigs() {
+      this.gzh = Config.getWithDefault(constants.CONF_GZH, constants.CONF_GZH_DEFAULT);
+    }
+  }
+</script>

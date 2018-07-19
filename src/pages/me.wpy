@@ -1,0 +1,277 @@
+<style lang="scss">
+
+
+  $windowColor: #151F2C;
+  $fontcolor: #FFFFFF;
+  $bgColor: #1c2b42;
+
+  .section {
+    background-color: $bgColor;
+    width: 94%;
+    border-radius: 20rpx;
+    color: $fontcolor;
+  }
+  .header {
+    height: 360rpx;
+    margin-top: 104rpx;
+    .user-info {
+        margin-top: -76rpx;
+        .user-info-image {
+           background: $bgColor;
+           padding: 16rpx;
+           border-radius: 50%;
+           image {
+             width: 128rpx;
+             height: 128rpx;
+             border-radius: 50%;
+           }
+        }
+
+        .user-image {
+          width: 128rpx;
+          height: 128rpx;
+          border-radius: 50%;
+        }
+    }
+
+    .reward-info {
+
+      .info-text {
+        margin-top: 10rpx;
+        margin-bottom: 30rpx;
+      }
+
+      .info-content {
+        font-size: 32rpx;
+        color: #6495ED;
+      }
+
+      .reward-image {
+          width: 28rpx;
+          height: 28rpx;
+      }
+    }
+
+    .redraw-info {
+      margin-top: 30rpx;
+      color: white;
+
+      .redraw-button {
+        color: white;
+        height: 76rpx;
+        border-radius: 38rpx;
+        text-align: center;
+        vertical-align: center;
+        font-size: 32rpx;
+        line-height: 76rpx;
+      }
+      .redraw {
+        width: 160rpx;
+        background-color: #e64340;
+        margin-left: 40rpx;
+      }
+
+      button {
+        background-color: #09BB07;
+        margin-right: 40rpx;
+      }
+
+    }
+  }
+
+  .body {
+    margin-top: 20rpx;
+    .title {
+      height: 80rpx;
+      border-bottom: 1px solid $windowColor;
+      font-size: 28rpx;
+      text-align: center;
+      line-height: 80rpx;
+    }
+
+    .reward-item {
+      height: 88rpx;
+      line-height: 88rpx;
+      border-bottom: 1px solid $windowColor;
+
+      .item-right {
+          width: 400rpx;
+          text-align: right;
+      }
+      .item-right-header {
+          margin-right: 120rpx;
+      }
+    }
+
+    .reward-item:last-child {
+      border-bottom: 0;
+    }
+
+    .last-item {
+      border-bottom: 0;
+    }
+
+    .reward-title {
+      color: #ffd700;
+    }
+  }
+
+  .no-data {
+    font-size: 24rpx;
+    color: #eeeeee;
+    height: 400rpx;
+    width: 100%;
+    image {
+      width: 128rpx;
+      height: 128rpx;
+    }
+  }
+
+</style>
+<template>
+  <view class="container flex flex-column">
+
+    <view class="section header">
+
+      <view class="user-info flex justify-center">
+          <view class="left-mask"></view>
+          <view class="user-info-image">
+            <image mode="aspectFill" src="{{userInfo.avatarUrl}}" wx:if="{{userInfo}}"></image>
+            <image mode="aspectFill" src="/images/logo.jpeg" wx:else></image>
+          </view>
+          <view class="left-mask"></view>
+      </view>
+
+      <view class="reward-info flex">
+
+        <view class="info-group flex flex-column justify-center align-center flex-grow">
+            <view class="info-text flex justify-center align-center">挑战机会</view>
+            <view><text class="info-content">{{rewardSats.chanceRemain}}</text>次</view>
+        </view>
+
+        <view class="info-group flex flex-column justify-center align-center flex-grow">
+            <view class="info-text flex justify-center align-center"><image src="/images/reward.png" class="reward-image"></image>累计奖金</view>
+            <view><text class="info-content">{{rewardSats.redpocketTotal}}</text>元</view>
+        </view>
+
+        <view class="info-group flex flex-column justify-center align-center flex-grow">
+            <view class="info-text flex justify-center align-center">通过次数</view>
+            <view><text class="info-content">{{rewardSats.passedTotal}}</text>次</view>
+        </view>
+
+      </view>
+
+      <view class="redraw-info flex align-center justify-between">
+          <view class="redraw redraw-button" @tap="goToRedraw" wx:if="{{userInfo}}">提现</view>
+          <button class="redraw redraw-button" open-type="getUserInfo" lang="zh_CN" bindgetuserinfo="onGotUserInfo" wx:else>登录</button>
+          <button open-type="contact" class="redraw-button">客服微信：{{kefu}}</button>
+      </view>
+
+    </view>
+
+    <view class="section body">
+        <view class="reward-item reward-title flex align-center justify-between">
+          <view class="margin-left item-left">红包金额</view>
+          <view class="margin-right item-right item-right-header">获取时间</view>
+        </view>
+        <block wx:if="{{rewardItems && rewardItems.length > 0}}">
+          <view class="reward-item flex align-center justify-between flex-noshrink" wx:for="{{rewardItems}}" wx:key="index">
+            <view class="margin-left item-left">{{item.detail}}</view>
+            <view class="margin-right item-right {{ index == rewardItems.length - 1 ? ' last-item': ''}}">{{item.updateTime}}</view>
+          </view>
+        </block>
+        <block wx:else>
+          <view class="no-data flex flex-column justify-center align-center">
+              <image src="/images/nodata.png"></image>
+              <text>没有记录</text>
+          </view>
+        </block>
+    </view>
+
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import Config from '@/utils/config'
+  import constants from '@/utils/constants'
+
+  let hasLoadBefore = false;
+
+  export default class MePage extends wepy.page {
+    config = {
+      navigationBarTitleText: "个人中心"
+    }
+    data = {
+      userInfo: null,
+      rewardSats: {
+        chanceRemain: 0,
+        passedTotal: 0,
+        redpocketRemain: 0.00,
+        redpocketTotal: 0.00
+      },
+      rewardItems: [],
+      kefu: "wwwpalce"
+    }
+
+    computed = {
+    }
+
+    methods = {
+      goToRedraw() {
+        wx.navigateTo({
+          url: '/pages/redraw'
+        });
+      },
+      onGotUserInfo() {
+        console.log("onGotUserInfo: ");
+        wepy.showToast({
+          title: '加载中',
+          icon: 'loading'
+        });
+        const that = this;
+        this.$parent.login().then((userInfo) => {
+          wepy.hideToast();
+          wx.navigateTo({
+            url: '/pages/redraw'
+          });
+        }).catch(err => {
+          wepy.hideToast();
+          console.log("onGotUserInfo error：", err)}
+        );
+      }
+    }
+
+    onShow() {
+      this.$parent.login().then((userInfo) => {
+          this.userInfo = userInfo;
+      }).catch(err => {
+          console.log("login error：", err)}
+      );
+      this.refreshConfigs();
+      const that = this;
+      // 缓存 120s
+      const now = (new Date()).getTime();
+      if (now - that.$parent.globalData.lastRequestUserStatTs <= 120000 && hasLoadBefore) {
+        return;
+      }
+      api.getRewards(!hasLoadBefore).then((data) =>{
+        console.log("getReward:", data);
+        that.rewardSats = data.stat;
+        that.rewardItems = data.items;
+        that.$parent.globalData.lastRequestUserStatTs = (new Date()).getTime();
+        hasLoadBefore = true;
+        that.$apply();
+      }).catch((e) => {console.error("getReward error:", e)});
+    }
+
+    onShareAppMessage() {
+      return this.$parent.getShareInfo();
+    }
+
+    refreshConfigs() {
+      this.kefu = Config.getWithDefault(constants.CONF_KEFU, constants.CONF_KEFU_DEFAULT);
+    }
+  }
+</script>

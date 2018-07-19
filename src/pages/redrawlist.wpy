@@ -1,0 +1,154 @@
+<style lang="scss">
+
+  .container {
+    background-color: #F1F0F5;
+    width: 100%;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .top {
+    margin-top: 60rpx;
+  }
+
+  .redraw-section {
+    width: 90%;
+    text-align: left;
+
+    .reward-item {
+      background-color: #F8F8F8;
+      border-radius: 20rpx;
+      margin-bottom: 20rpx;
+      line-height: 60rpx;
+      color: #222222;
+      .red {
+        color: #C56450;
+      }
+      .tip {
+        color: #888888;
+      }
+
+      .btn {
+        height: 88rpx;
+        line-height: 88rpx;
+        font-size: 32rpx;
+        border-radius: 10rpx;
+        background-color: #56B837;
+        color: #FFFFFF;
+      }
+    }
+  }
+
+
+  .redraw-notices {
+    width: 80%;
+    margin-top: 40rpx;
+    font-size: 24rpx;
+    color: #666666;
+    line-height: 36rpx;
+    text-align: left;
+    .notice {
+      width: 100%;
+      text-align: left;
+    }
+  }
+
+
+  .no-data {
+    font-size: 24rpx;
+    color: #999999;
+    height: 400rpx;
+    width: 100%;
+    image {
+      width: 128rpx;
+      height: 128rpx;
+    }
+  }
+
+
+</style>
+<template>
+  <view class="container flex flex-column">
+      <view class="redraw-section flex flex-column" wx:if="{{redrawItems && redrawItems.length > 0}}">
+
+        <view class="top">
+
+        </view>
+        <view class="reward-item flex flex-column flex-noshrink" wx:for="{{redrawItems}}" wx:key="index">
+          <view class="margin-left margin-right"><text class="tip">提现单号：</text>{{item.id}}</view>
+          <view class="margin-left margin-right red"><text class="tip">提现金额：</text>¥{{item.amount}}</view>
+          <view class="margin-left margin-right"><text class="tip">提现时间：</text>{{item.addTime}}</view>
+          <view class="margin-left margin-right red"><text class="tip">当前状态：</text>{{item.redrawStatus}}</view>
+          <view class="btn flex align-center justify-center margin-left margin-right margin-bottom" @tap="copyRedraw({{item.id}}, {{item.amount}})">复制-发给公众号</view>
+        </view>
+
+        <view class="redraw-notices flex flex-column justify-center flex-noshrink">
+          <text class="notice">温馨提示：</text>
+          <text class="notice">1. 搜索并关注公众号"{{gzh}}", 发送订单号提现</text>
+          <text class="notice">2. 如果忘记提现单号， 可从提现记录里查看</text>
+          <text class="notice">3. 提现金额将在公众号里发放，请务必关注方可提现</text>
+          <text class="notice">4. 提现单号是唯一提现凭证, 请妥善保管</text>
+        </view>
+
+      </view>
+
+      <view class="no-data flex flex-column justify-center align-center" wx:else>
+        <image src="/images/nodata.png"></image>
+        <text wx:if="{{hasLoad}}">没有记录</text>
+        <text wx:if="{{!hasLoad}}">加载中...</text>
+      </view>
+
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import Config from '@/utils/config'
+  import constants from '@/utils/constants'
+
+
+  export default class RedrawListPage extends wepy.page {
+    config = {
+      navigationBarTitleText: "提现记录",
+      backgroundColor: "#EDECF3",
+    }
+    data = {
+      gzh: "荣耀闯关",
+      redrawItems: [],
+      hasLoad: false
+    }
+
+    computed = {
+    }
+
+    methods = {
+      copyRedraw(id, amount) {
+        const data = `提现单号:${id}; 提现金额：${amount}`;
+        wx.setClipboardData && wx.setClipboardData({
+          data: data,
+          success: function(res) {
+          }
+        });
+
+      }
+    }
+
+    onShow() {
+      api.getRedraws().then((data) =>{
+        this.redrawItems = data;
+        this.hasLoad = true;
+        this.$apply();
+      }).catch((e) => {console.error("getRedraws error:", e); this.hasLoad = false;});
+      this.refreshConfigs();
+    }
+
+    onShareAppMessage() {
+      return this.$parent.getShareInfo();
+    }
+
+    refreshConfigs() {
+      this.gzh = Config.getWithDefault(constants.CONF_GZH, constants.CONF_GZH_DEFAULT);
+    }
+  }
+</script>

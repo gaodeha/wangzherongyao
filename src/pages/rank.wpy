@@ -1,0 +1,248 @@
+<style lang="scss">
+
+  .header-margin-top {
+    margin-top: 40rpx;
+  }
+  .header-margin-bottom {
+    margin-bottom: 40rpx;
+  }
+
+  .scope-header {
+    text-align: center;
+    width: 680rpx;
+    align-self: center;
+    border-radius: 20px;
+    border: 1px solid #1c2b42;
+    .scope_tab {
+      color: #999999;
+      width: 50%;
+      border-radius: 20px;
+      line-height: 30px;
+      background: #171F2E;
+      font-size: 14px;
+      &.active {
+        border: 1px solid #1c2b42;
+        color: #ffd700;
+        background: #1c2b42;
+      }
+    }
+  }
+  .header {
+    margin: 0 0 40rpx 0;
+    text-align: center;
+    width: 100%;
+
+    .rank_tab {
+      color: #999999;
+      width: 240rpx;
+      border: 1px solid #1c2b42;
+      border-radius: 20px;
+      line-height: 30px;
+      &.active {
+        color: #ffd700;
+        background: #1c2b42;
+      }
+    }
+  }
+  .body {
+    color: white;
+    width: 96%;
+    margin-bottom: 10rpx;
+    .rank-item {
+      height: 128rpx;
+      margin: 0 20rpx 8rpx 20rpx;
+      padding: 0 10px;
+      font-size: 12px;
+      background: #1c2b42;
+      border-radius: 12rpx;
+      image {
+        width: 96rpx;
+        height: 96rpx;
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .share-invite {
+    margin-top: 50rpx;
+    color: #cccccc;
+    font-size: 24rpx;
+    line-height: 44rpx;
+    .share-btn {
+      margin-top: 10rpx;
+      background-color: #FD5D5C;
+      color: #FFFFFF;
+    }
+  }
+</style>
+<template>
+  <view class="container flex flex-column">
+
+    <view class="scope-header header-margin-top margin-bottom flex align-center justify-center">
+      <view class="flex justify-center scope_tab {{scopeActive === 0 ? ' active' : ''}}" @tap="changeScope(0)">全球</view>
+      <view class="flex justify-center scope_tab  {{scopeActive === 1 ? ' active' : ''}}" @tap="changeScope(1)" wx:if="{{userInfo}}">好友</view>
+      <button class="flex justify-center scope_tab margin-right {{scopeActive === 1 ? ' active' : ''}}" open-type="getUserInfo" lang="zh_CN" bindgetuserinfo="onGotUserInfo" wx:else>好友排行</button>
+    </view>
+    <view class="scope-header header-margin-bottom flex align-center justify-center">
+      <view class="flex justify-center scope_tab {{active === 0 ? ' active' : ''}}" @tap="change(0)">荣誉榜</view>
+      <view class="flex justify-center scope_tab {{active === 1 ? ' active' : ''}}" @tap="change(1)">毅力榜</view>
+    </view>
+    <!--<view class="header flex align-center justify-center">-->
+      <!--<view class="flex justify-center rank_tab margin-right {{active === 0 ? ' active' : ''}}" @tap="change(0)">荣誉榜</view>-->
+      <!--<view class="flex justify-center rank_tab margin-left {{active === 1 ? ' active' : ''}}" @tap="change(1)">毅力榜</view>-->
+    <!--</view>-->
+    <view class="body flex flex-column">
+        <block wx:for="{{itemList}}" wx:key="index">
+          <view class="rank-item flex align-center justify-between flex-noshrink">
+            <view class="item-left flex align-center">
+                <text class="rank-index margin-right">{{index+1}}</text>
+                <image mode="aspectFill" src="{{item.avatarUrl}}"></image>
+                <text class="rank-nickname margin-left">{{item.nickName}}</text>
+            </view>
+            <view class="item-right">
+                {{item.rankText}}
+            </view>
+          </view>
+        </block>
+    </view>
+    <view class="share-invite" wx:if="{{scopeActive === 1}}">
+        <text>邀请你的王者好友试试吧，他们能闯关成功吗?</text>
+        <button open-type="share" class="btn share-btn flex align-center justify-center">邀请好友</button>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+
+
+  let  ryRanks = [];
+  let  ylRanks = [];
+
+  let friendRyRanks = [];
+  let friendYlRanks = [];
+
+
+  export default class RankPage extends wepy.page {
+    config = {
+      navigationBarTitleText: "排行榜"
+    }
+    data = {
+      userInfo: null,
+      scopeActive: 0,
+      active: 0,
+      itemList: []
+    }
+
+    computed = {
+    }
+
+    methods = {
+      change(val) {
+          const active = parseInt(val);
+          if (this.active === active) {
+            return;
+          }
+          this.active = active;
+          this.updateItemList();
+      },
+
+      changeScope(val) {
+          const scopeActive = parseInt(val);
+          if (this.scopeActive === scopeActive) {
+            return;
+          }
+          this.scopeActive = scopeActive;
+          this.loadRank();
+          this.updateItemList();
+      },
+
+      onGotUserInfo() {
+        console.log("onGotUserInfo: ");
+        wepy.showToast({
+          title: '加载中',
+          icon: 'loading'
+        });
+        const that = this;
+        this.$parent.login().then((userInfo) => {
+          wepy.hideToast();
+          this.userInfo = userInfo;
+          this.scopeActive = 1;
+          this.loadRank();
+        }).catch(err => {
+          wepy.hideToast();
+          console.log("onGotUserInfo error：", err)}
+        );
+      }
+    }
+
+    onShow() {
+      this.$parent.login().then((userInfo) => {
+        this.userInfo = userInfo;
+      }).catch(err => {
+        console.log("login error：", err)}
+      );
+      this.loadRank();
+    }
+
+    loadRank() {
+      if (this.scopeActive === 0) {
+        this.loadGlobalRank();
+      } else {
+        this.loadFriendRank();
+      }
+    }
+
+    loadGlobalRank() {
+      // 缓存 120s
+      const now = (new Date()).getTime();
+      if (now - this.$parent.globalData.lastRequestRankTs <= 120000 && ryRanks && ryRanks.length > 0) {
+        return;
+      }
+      api.getRanks().then((data) =>{
+        ryRanks = data.ryRanks;
+        ylRanks = data.ylRanks;
+        this.updateItemList();
+        this.$parent.globalData.lastRequestRankTs = (new Date()).getTime();
+        this.$apply();
+      }).catch((e) => {console.error("getRanks error:", e)});
+    }
+
+    loadFriendRank() {
+      // 缓存 120s
+      const now = (new Date()).getTime();
+      if (now - this.$parent.globalData.lastRequestFriendRankTs <= 120000 && friendRyRanks && friendRyRanks.length > 0) {
+        return;
+      }
+      api.getFriendRanks().then((data) =>{
+        friendRyRanks = data.ryRanks;
+        friendYlRanks = data.ylRanks;
+        this.updateItemList();
+        this.$parent.globalData.lastRequestFriendRankTs = (new Date()).getTime();
+        this.$apply();
+      }).catch((e) => {console.error("getFriendRanks error:", e)});
+    }
+
+
+    updateItemList() {
+      if (this.scopeActive === 0) {
+        if (this.active === 0) {
+          this.itemList = ryRanks;
+        } else {
+          this.itemList = ylRanks;
+        }
+      } else {
+        if (this.active === 0) {
+          this.itemList = friendRyRanks;
+        } else {
+          this.itemList = friendYlRanks;
+        }
+      }
+    }
+
+    onShareAppMessage() {
+      return this.$parent.getShareInfo();
+    }
+  }
+</script>

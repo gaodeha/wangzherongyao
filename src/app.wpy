@@ -1,0 +1,217 @@
+<style lang="scss">
+  @import 'styles/index.scss';
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    font-size: 14px;
+  }
+</style>
+
+<script>
+import wepy from 'wepy'
+import 'wepy-async-function'
+import Session from '@/utils/session'
+import Config from '@/utils/config'
+import constants from '@/utils/constants'
+import api from '@/api/api';
+import { randomChoice } from '@/utils/utils'
+
+
+let OPEN_FROM_UID = 0;
+
+export default class extends wepy.app {
+  config = {
+    pages: [
+      'pages/index',
+      'pages/rank',
+      'pages/me',
+      'pages/answer',
+      'pages/redraw',
+      'pages/gift',
+      'pages/redrawlist'
+    ],
+    window: {
+      navigationBarTextStyle: "white",
+      backgroundColor: "#171F2E",
+      navigationBarTitleText: '荣耀闯关',
+      navigationBarBackgroundColor: '#151F2C',
+    },
+    tabBar: {
+      color: "#FFFFFF",
+      selectedColor: "#ffd700",
+      backgroundColor: "#151F2C",
+      borderStyle: "black",
+      list: [{
+        pagePath: "pages/index",
+        text: "我要挑战",
+        iconPath: "images/pk.png",
+        selectedIconPath: "/images/pk_selected.png"
+      }, {
+        pagePath: "pages/rank",
+        text: "排行榜",
+        iconPath: "/images/rank.png",
+        selectedIconPath: "/images/rank_selected.png"
+      }, {
+        pagePath: "pages/me",
+        text: "个人中心",
+        iconPath: "/images/me.png",
+        selectedIconPath: "/images/me_selected.png"
+      }]
+    },
+  }
+
+  globalData = {
+    userInfo: null,
+    examId: 0,
+    qCount: 12,
+    audioOn: true,
+    // 用来控制 rank 和 me 两个tab数据最后加载时间，缓存一定时间，以免每次切换都请求
+    lastRequestRankTs: 0,
+    lastRequestFriendRankTs: 0,
+    lastRequestUserStatTs: 0
+  }
+
+  constructor () {
+    super()
+    this.use('requestfix');
+    this.use('promisify');
+  }
+
+  onLaunch(options) {
+    this.login().then((userInfo) => {
+      this.globalData.userInfo = userInfo;
+      this.reportUserRelation();
+    }).catch(function(err){
+      console.log("login fail:", err);
+    });
+  }
+
+
+  onShow(options) {
+    // 保存 分享引导进来的用户ID
+    if (options && options.query && options.query.uid) {
+      OPEN_FROM_UID = parseInt(options.query.uid);
+    }
+    if (this.globalData.userInfo) {
+      this.reportUserRelation();
+    }
+    this.refreshConfig();
+  }
+
+  async refreshConfig() {
+    const configs = await api.loadConfig();
+    Config.set(configs);
+  }
+
+  async login () {
+    if(this.globalData.userInfo != null) {
+      return this.globalData.userInfo;
+    }
+    return this.doLogin();
+  }
+
+
+  async doLogin(){
+    const loginRes = await wepy.login();
+    const userInfoRes = await wepy.getUserInfo({
+      lang: "zh_CN"
+    });
+    // 构造请求头，包含 code、encryptedData 和 iv
+    const code = loginRes.code;
+    const encryptedData = userInfoRes.encryptedData;
+    const iv = userInfoRes.iv;
+
+    // 兼容 wept调试器
+    const userInfo = userInfoRes.userInfo;
+    if (code === "the code is a mock one") {
+      return Promise.resolve(userInfo);
+    }
+    const header = {};
+    header[constants.WX_HEADER_CODE] = code;
+    header[constants.WX_HEADER_ENCRYPTED_DATA] = encryptedData;
+    header[constants.WX_HEADER_IV] = iv;
+    const that = this;
+    return api.login({header}).then(res => {
+      res.userInfo = userInfo;
+      res.userInfo.uid = res.uid;
+      Session.set(res);
+      that.clearRequestCache();
+      this.globalData.userInfo = userInfo;
+      this.reportUserRelation();
+      return Promise.resolve(userInfo)
+    });
+  }
+
+
+  /**
+   * 上报用户关系
+   */
+  reportUserRelation() {
+    if (OPEN_FROM_UID > 0 && OPEN_FROM_UID !== this.globalData.userInfo.uid) {
+        api.reportUserRelation(OPEN_FROM_UID);
+    }
+  }
+
+  /**
+   * 上报分享行为
+   * @param title
+   * @param path
+   * @param imageUrl
+   */
+  reportShare(title, path, imageUrl) {
+    api.reportShare(title, path, imageUrl);
+  }
+
+  getShareInfo() {
+    let path = "/pages/index";
+    let title = this._getShareTitle();
+    if (this.globalData.userInfo && this.globalData.userInfo.uid) {
+      path = path + "?uid=" + this.globalData.userInfo.uid;
+      title = "[" + this.globalData.userInfo.nickName + "@我]" + title;
+    }
+    const imageUrl = this._getShareImageUrl();
+    const that = this;
+    return {
+      title: title,
+      path: path,
+      imageUrl: imageUrl,
+      success: function () {
+        that.reportShare(title, path, imageUrl);
+        that.clearRequestCache();
+      },
+      fail: function () {
+      }
+    }
+  }
+
+  _getShareTitle() {
+    return Config.getWithDefault(constants.CONF_SHARE_TITLE, constants.CONF_SHARE_TITLE_DEFAULT);
+  }
+
+  _getShareImageUrl() {
+    const images = Config.getWithDefault(constants.CONF_SHARE_IMAGES, constants.CONF_SHARE_IMAGES_DEFAULT);
+    if (images && images.length > 0) {
+      if ( typeof images === 'string') {
+        try {
+          const imageArr = JSON.parse(images);
+          return randomChoice(imageArr);
+        } catch (e) {
+          console.error("parse images, err ", e);
+        }
+      } else {
+        return randomChoice(imageArr);
+      }
+    }
+    return null;
+  }
+
+  clearRequestCache() {
+    this.globalData.lastRequestRankTs = 0;
+    this.globalData.lastRequestFriendRankTs = 0;
+    this.globalData.lastRequestUserStatTs = 0;
+  }
+
+}
+</script>

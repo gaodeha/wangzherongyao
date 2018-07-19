@@ -1,0 +1,49 @@
+<template>
+  <view class="title-item">
+    <block wx:if="{{titleItems && titleItems.length > 1}}">
+      <text wx:for="{{titleItems}}" wx:key="index" class="{{ index === 1 ? 'text-reverse': ''}}">{{item}}</text>
+    </block>
+    <block wx:else>
+      {{title}}
+    </block>
+  </view>
+</template>
+<script>
+  import wepy from 'wepy';
+
+  export default class Title extends wepy.component {
+
+    data = {
+      title: "",
+      titleItems : []
+    }
+
+    onLoad () {
+    }
+
+    update(title) {
+      if (!title) {
+        return;
+      }
+      this.title = title;
+      const resultItems = [];
+      let index = 0;
+      if (this.title.indexOf("不") !== -1) {
+        index = this.title.indexOf("不");
+        resultItems.push(this.title.substring(0, index));
+        resultItems.push("不");
+        resultItems.push(this.title.substring(index + 1));
+      } else if (this.title.indexOf("没有") !== -1) {
+        index = this.title.indexOf("没有");
+        resultItems.push(this.title.substring(0, index));
+        resultItems.push("没有");
+        resultItems.push(this.title.substring(index + 2));
+      } else {
+        resultItems.push(this.title);
+      }
+      this.titleItems = resultItems;
+      this.$apply();
+    }
+
+  }
+</script>

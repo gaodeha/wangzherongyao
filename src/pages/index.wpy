@@ -1,0 +1,254 @@
+<style lang="scss">
+  .index-page{
+    height: auto;
+  }
+  .header {
+    margin-top: 40rpx;
+    color: #ffd700;
+    text-align: center;
+    width: 100%;
+    image {
+      width: 86%;
+      height: 280rpx;
+    }
+    .title-big {
+      width: 450rpx;
+      background: linear-gradient("to left top", "orgin", "#ffd700");
+      font-size: 40rpx;
+      text-align: center;
+    }
+  }
+  .rule {
+    width: 86%;
+    color: #999999;
+    line-height: 44rpx;
+    .rule_tips {
+      width: 20rpx;
+      color: #ffd700
+    }
+  }
+  .start-pk {
+    margin-top: 40rpx;
+    margin-bottom: 40rpx;
+    width: 86%;
+    text-align: center;
+
+    .tips {
+      color: #ffd700;
+      font-size: 12px;
+    }
+    button {
+      background-color: #ffd700;
+      color: #FFFFFF;
+    }
+  }
+
+  .modal {
+    position: absolute;
+    top: 200rpx;
+    left: 50rpx;
+    right: 50rpx;
+    z-index: 100;
+    border-radius: 6rpx;
+  }
+
+  .result-error {
+    background-color: #FFFFFF;
+    .close {
+      position: absolute;
+      right: 0rpx;
+      top: 0rpx;
+      width: 80rpx;
+      height: 80rpx;
+
+      image {
+        width: 40rpx;
+        height: 40rpx;
+      }
+    }
+
+    .reason {
+      margin-top: 60rpx;
+      .title {
+        color: red;
+        font-size: 32rpx;
+      }
+      .tips {
+        color: #888888;
+        font-size: 24rpx;
+      }
+      image {
+        width: 120rpx;
+        height: 120rpx;
+      }
+    }
+
+    .reason-tips {
+      margin-top: 60rpx;
+      color: #888888;
+      font-size: 24rpx;
+    }
+  }
+
+  .btn-group {
+    width: 80%;
+    margin-top: 30rpx;
+    margin-bottom: 40rpx;
+    .btn {
+      width: 100%;
+      height: 88rpx;
+      font-size: 32rpx;
+      border-radius: 10rpx;
+    }
+
+    .share-btn {
+      background-color: #FD5D5C;
+      color: #FFFFFF;
+    }
+
+    .goon-btn {
+      margin-top: 24rpx;
+      background-color: #F0F1F3;
+      color: #666666;
+      border: 1px solid #cccccc;
+    }
+
+  }
+
+</style>
+<template>
+  <view class="container flex flex-column index-page">
+    <view class="header">
+      <image mode="aspectFill" src="{{indexImageUrl}}"></image>
+    </view>
+
+    <view class="start-pk">
+      <view>
+        <button open-type="getUserInfo" lang="zh_CN" bindgetuserinfo="onGotUserInfo">开始挑战</button>
+      </view>
+    </view>
+
+    <view class="rule flex flex-column">
+      <view>
+        <text class="rule_tips">☞</text> 每人每天有多次挑战机会
+      </view>
+      <view>
+        <text class="rule_tips">☞</text> 每轮挑战共{{qRange}}关，每道题目均与王者荣耀相关，连续答对则挑战成功，可以获得现金红包一个，金额随机
+      </view>
+      <view>
+        <text class="rule_tips">☞</text> 每轮挑战赢取的现金红包可根据提示提现到微信钱包，祝君中红包大奖
+      </view>
+      <view>
+        <text class="rule_tips">☞</text> 本答题闯关游戏，主要帮助大家熟悉王者荣耀细节，游戏规则解释权归游戏开发者所有
+      </view>
+      <view>
+        <text class="rule_tips">☞</text> 如有更多咨询，请联系客服或加微： {{kefu}}
+      </view>
+    </view>
+
+    <view class="modal result-error flex flex-column justify-center align-center" wx:if="{{resultStatus === 'nochance'}}">
+
+      <view class="close flex align-center justify-center" @tap="closeModal">
+        <image src="/images/close1.png"></image>
+      </view>
+
+      <view class="reason flex flex-column align-center justify-center">
+        <image src="/images/wrong.png"></image>
+        <text class="title">{{noChanceTitle}}</text>
+        <text class="tips">明天再来咯~</text>
+      </view>
+
+      <view class="reason-tips">
+        <text>邀请好友可获得更多挑战机会</text>
+      </view>
+
+      <view class="result-buttom btn-group">
+        <button open-type="share" class="btn share-btn flex align-center justify-center">邀请好友</button>
+      </view>
+    </view>
+
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import Config from '@/utils/config';
+  import constants from '@/utils/constants';
+
+
+
+  export default class Index extends wepy.page {
+    config = {
+    }
+    data = {
+      kefu: "wwwpalce",
+      qRange: "8-18",
+      resultStatus: "",
+      indexImageUrl: "https://wwwwzry.oss-cn-shenzhen.aliyuncs.com/index.jpg",
+      noChanceTitle: "今天挑战机会用完了"
+    }
+
+    computed = {
+    }
+
+    methods = {
+      handleViewTap() {
+
+      },
+      onGotUserInfo() {
+        wepy.showToast({
+          title: '加载中',
+          icon: 'loading'
+        });
+        this.$parent.login().then((userInfo) => {
+          wepy.hideToast();
+          this.startExam();
+        }).catch(err => {
+          wepy.hideToast();
+          console.log("onGotUserInfo error：", err)}
+        );
+      },
+      closeModal() {
+        this.resultStatus = "";
+      }
+    }
+
+    onShow() {
+      this.refreshConfigs();
+    }
+
+    onShareAppMessage() {
+      return this.$parent.getShareInfo();
+    }
+
+    refreshConfigs() {
+      this.kefu = Config.getWithDefault(constants.CONF_KEFU, constants.CONF_KEFU_DEFAULT);
+      this.noChanceTitle = Config.getWithDefault(constants.CONF_NO_CHANCE_TITLE, constants.CONF_NO_CHANCE_TITLE_DEFAULT);
+      this.indexImageUrl = Config.getWithDefault(constants.CONF_INDEX_IMAGE, constants.CONF_INDEX_IMAGE_DEFAULT);
+      this.qRange = Config.getWithDefault(constants.CONF_QUESTION_RANGE, constants.CONF_QUESTION_RANGE_DEFAULT);
+    }
+
+    startExam() {
+      api.startExam().then(res => {
+        this.$parent.globalData.examId = res.examId;
+        this.$parent.globalData.qCount = res.totalQcount;
+        // 参加比赛之后，排行榜和个人信息需要重新加载
+        this.$parent.clearRequestCache();
+        wx.navigateTo({
+          url: '/pages/answer'
+        });
+      }).catch((e) => {
+        if (e.type && e.type === constants.RESP_HAS_NO_CHANCE) {
+          this.resultStatus = "nochance";
+          this.$apply();
+        } else {
+          wepy.showToast({
+            title: '参加挑战失败，请稍后重试',
+            icon: 'none'
+          });
+        }
+      });
+    }
+  }
+</script>

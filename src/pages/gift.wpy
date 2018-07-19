@@ -1,0 +1,139 @@
+<style lang="scss">
+
+  .container {
+    background-color: white;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .red-bg {
+      background-color: #D45B4A;
+      width: 1600rpx;
+      height: 600rpx;
+      border-radius: 50%;
+      margin-top: -300rpx;
+  }
+
+  .logo {
+    margin-top: -80rpx;
+    width: 160rpx;
+    height: 160rpx;
+    border-radius: 50%;
+  }
+
+  .success-tips {
+    margin-top: 60rpx;
+    color: #C56450;
+    font-size: 36rpx;
+  }
+
+  .money-count {
+    margin-top: 10rpx;
+    color: #C56450;
+    font-size: 48rpx;
+    font-weight: bolder;
+  }
+
+  .money-tips {
+    margin-top: 60rpx;
+    font-size: 24rpx;
+    color: #5392BA
+  }
+
+  .btn-group {
+    width: 75%;
+    margin-top: 30rpx;
+    margin-bottom: 40rpx;
+    .btn {
+      width: 100%;
+      height: 88rpx;
+      font-size: 32rpx;
+      border-radius: 10rpx;
+    }
+
+    .goon-btn {
+      background-color: #D45B4A;
+      color: #FFFFFF;
+    }
+
+    .see-reward {
+      margin-top: 24rpx;
+      background-color: #FFFFFF;
+      color: #D45B4A;
+      border: 1px solid #D45B4A;
+    }
+
+  }
+
+</style>
+<template>
+  <view class="container flex flex-column align-center">
+
+
+      <view class="red-bg"></view>
+
+      <image src="/images/logo.jpeg" class="logo"></image>
+
+      <text class="success-tips">恭喜发财, 大吉大利</text>
+
+      <text class="money-count">{{redpocket}}</text>
+
+      <text class="money-tips">已存入钱包，可提取</text>
+
+      <view class="result-buttom btn-group">
+        <view class="btn goon-btn flex align-center justify-center" @tap="switchToIndex">继续游戏</view>
+        <view class="btn see-reward flex align-center justify-center" @tap="switchToMe">查看我的奖励</view>
+      </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy';
+  import api from '@/api/api';
+  import { delay } from "../utils/utils";
+  // 倒计时定时任务
+  let answerCountDownTimer = null;
+  // 倒计时context
+  let countDownCanvasContext = null;
+  // 当前倒计时
+  let maxCountSeconds = 10;
+  let countDownSeconds = 10;
+
+
+  export default class Answer extends wepy.page {
+    config = {
+        navigationBarBackgroundColor: '#D45B4A',
+    }
+    data = {
+        redpocket: '...'
+    }
+
+    computed = {
+    }
+
+    methods = {
+      switchToIndex() {
+        wx.switchTab({
+          url: '/pages/index'
+        })
+      },
+      switchToMe() {
+        wx.switchTab({
+          url: '/pages/me'
+        })
+      }
+    }
+
+    onShow() {
+        const examId = this.$parent.globalData.examId;
+        api.getRedPocket(examId).then(
+          redpocket => {this.redpocket = redpocket; this.$apply();}
+        ).catch(e => { console.log("getRedPocket err:", e); } );
+    }
+
+    onShareAppMessage() {
+      return this.$parent.getShareInfo();
+    }
+
+  }
+</script>
